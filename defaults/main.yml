@@ -1,2 +1,3 @@
 ---
 # defaults file for win-install-adobe-reader
+packageInstaller: Reader_de_install.exe

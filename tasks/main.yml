@@ -1,2 +1,56 @@
 ---
-# tasks file for win-install-adobe-reader
+# Tasks for setting up the environment and installing Adobe Reader on a Windows machine
+- name: Create software-depo
+  win_file:
+    path: "{{ softwareDeploymentMainFolder }}"
+    state: directory
+
+- name: Create ansible repository
+  win_file:
+    path: "{{ ansibleRepositoryPath }}"
+    state: directory
+
+- name: Create package folder
+  win_file:
+    path: "{{ localClientSoftwareRepositoryFolderPath }}"
+    state: directory
+
+- name: Create log folder
+  win_file:
+    path: "{{ logFolder }}"
+    state: directory
+
+- name: Create Env folder
+  win_file:
+    path: "{{ envFolder }}"
+    state: directory
+
+- name: Copy install files
+  win_copy:
+    src: "{{ role_path }}/files/"
+    dest: "{{ localClientSoftwareRepositoryFolderPath }}"
+
+- name: Generate .env file
+  win_template:
+    src: "{{ role_path }}/templates/env.j2"
+    dest: "{{ envFolder }}\\.env"
+
+- name: Install package
+  block:
+    - name: Execute installation script
+      win_shell: >
+        powershell.exe -ExecutionPolicy Bypass -File "{{ localClientSoftwareRepositoryFolderPath }}\\{{ installScript }}"
+      register: result
+      failed_when: result.rc != 0
+      changed_when: result.stdout.find("got installed successfully") != -1
+
+  always:
+    - name: Remove .env file
+      win_file:
+        path: "{{ envFolder }}\\.env"
+        state: absent
+
+  rescue:
+    - name: Mark playbook as failed
+      fail:
+        msg: "The installation of {{ packageName }} has failed!"
