@@ -1,9 +1,10 @@
-abcpy.ini
-AcroRdrDCUpd2500120432.msp
-AcroRead.~st
-AcroRead.msi
-AcroRead.mst
-AcroRead.ref
-Data1.cab
-setup.exe
-setup.ini
+# abcpy.ini
+# AcroRdrDCUpd2500120432.msp
+# AcroRead.~st
+# AcroRead.msi
+# AcroRead.mst
+# AcroRead.ref
+# Data1.cab
+# setup.exe
+# setup.ini
+files/
