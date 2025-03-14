@@ -1,8 +1,7 @@
 ---
 # vars file for win-install-adobe-reader
-executablePackageFile: !unsafe C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe
-packageName: Adobe Acrobat (64-bit)
-installScript: exe-install.ps1
+executablePackageFile: !unsafe C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe
+packageName: Adobe Acrobat Reader DC
 
 ## DO NOT TOUCH THIS! ##
 ansibleRepositoryPath: !unsafe C:\SWSETUP\softwareDeployment\ansibleRepository\

@@ -15,42 +15,63 @@
     path: "{{ localClientSoftwareRepositoryFolderPath }}"
     state: directory
 
-- name: Create log folder
-  win_file:
-    path: "{{ logFolder }}"
-    state: directory
-
-- name: Create Env folder
-  win_file:
-    path: "{{ envFolder }}"
-    state: directory
-
 - name: Copy install files
   win_copy:
     src: "{{ role_path }}/files/"
     dest: "{{ localClientSoftwareRepositoryFolderPath }}"
 
-- name: Generate .env file
-  win_template:
-    src: "{{ role_path }}/templates/env.j2"
-    dest: "{{ envFolder }}\\.env"
+- name: Check if the package is installed
+  win_shell: |
+    $installed_versions = Get-CimInstance -Query "SELECT * FROM Win32_Product" | Where-Object { $_.Name -like "*{{ packageName }}*" }
+    $installed_versions2 = Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' | Where-Object { $_.DisplayName -like "*{{ packageName }}*" }
+    $installed_versions3 = Get-ItemProperty 'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' | Where-Object { $_.DisplayName -like "*{{ packageName }}*" }
+    $DocuwarePath = Test-Path -Path "{{ executablePackageFile }}"
+    if ($installed_versions -or $installed_versions2 -or $installed_versions3 -or $DocuwarePath) { Write-Output "installed" } else { Write-Output "not_installed" }
+  register: package_installed
 
-- name: Install package
-  block:
+- name: Print package_installed variable
+  debug:
+    var: package_installed
+
+- name: Falls Paket bereits installiert ist, zeige Nachricht
+  debug:
+    msg: "{{ packageName }} ist bereits installiert. Der Installationsprozess wird beendet."
+  when: package_installed.stdout_lines[0] ==  "installed"
+
+- name: Falls Paket bereits installiert ist, beende Playbook
+  meta: end_host
+  when: package_installed.stdout_lines[0] ==  "installed"
+
+- block:
+    - name: Erstelle den vollständigen Pfad zur MSI-Datei
+      set_fact:
+        msi_full_path: "{{ ansibleRepositoryPath }}\\{{ packageName }}\\{{ packageInstaller }}"
+
     - name: Execute installation script
-      win_shell: >
-        powershell.exe -ExecutionPolicy Bypass -File "{{ localClientSoftwareRepositoryFolderPath }}\\{{ installScript }}"
+      win_command: '"C:\SWSETUP\softwareDeployment\ansibleRepository\Adobe Acrobat Reader DC\install.cmd"'
       register: result
       failed_when: result.rc != 0
-      changed_when: result.stdout.find("got installed successfully") != -1
-
-  always:
-    - name: Remove .env file
-      win_file:
-        path: "{{ envFolder }}\\.env"
-        state: absent
 
   rescue:
-    - name: Mark playbook as failed
+    - name: Debug Fehler während der Installation
+      debug:
+        msg: "Fehler während der Installation: {{ ansible_failed_task }}"
+
+    - name: Abbruch Installation fehlgeschlagen
       fail:
-        msg: "The installation of {{ packageName }} has failed!"
+        msg: "Die Installation von {{ packageName }} ist fehlgeschlagen."
+
+- name: Prüfe, ob die Installation erfolgreich war
+  win_stat:
+    path: "{{ executablePackageFile }}"
+  register: executable_file_stat
+
+- name: Endgültige Überprüfung Installation fehlgeschlagen, wenn Paket oder Executable nicht vorhanden
+  fail:
+    msg: "{{ packageName }} konnte nicht installiert werden. Der Installationsprozess wird abgebrochen."
+  when: not executable_file_stat.stat.exists
+
+- name: Bestätigung Paket wurde erfolgreich installiert
+  debug:
+    msg: "{{ packageName }} wurde erfolgreich installiert."
+  when: executable_file_stat.stat.exists
